@@ -1,0 +1,4 @@
+interface:
+  display_name: "Flower Action Runtime Guide"
+  short_description: "Build safe governed actions with Flower Action Runtime."
+  default_prompt: "Use $flower-action-runtime-guide to design or review governed actions with approval, deferred execution, and durable CAS state."

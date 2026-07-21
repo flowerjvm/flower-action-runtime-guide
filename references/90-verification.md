@@ -1,0 +1,53 @@
+# Verification
+
+Run checks in proportion to the changed surface. Prefer deterministic tests and
+record any environment-dependent check that could not run.
+
+## Runtime Repository
+
+For a complete source change:
+
+```powershell
+mvn -B -ntp clean verify
+```
+
+Before a release, also exercise sources, Javadocs, signing configuration, and
+Central packaging through the repository's documented release profile. Use its
+publishing-skip option for a dry run; never use the real deploy command merely
+as a verification step.
+
+For focused iteration, use Maven's project selection with required upstream
+modules, then finish with the full reactor. Repeat real concurrency test classes
+when changing `RunStore`, completion, cancellation, or recovery.
+
+## Host Application
+
+Run the host's normal complete check, such as:
+
+```powershell
+mvn -B -ntp verify
+```
+
+or:
+
+```powershell
+./gradlew check
+```
+
+When Flower Flow, Step, Guard, Worker, or wait code changed, follow
+`flower-app-guide` and run the configured `flower-check` and `flower-testkit`
+coverage as well.
+
+## Completion Checklist
+
+- Every entry point creates a proposal instead of mutating the domain directly.
+- Identity, tenant, run id, and idempotency semantics are explicit.
+- Approval resume repeats definition, validation, policy, and guard checks.
+- Executor mode matches work lifetime, blocking behavior, and durability.
+- Deferred callbacks authenticate and verify the current attempt token.
+- All externally visible transitions use durable versioned CAS.
+- Real thread/connection races prove one terminal winner.
+- Recovery and duplicate delivery are idempotent.
+- Result codes and retry dispositions are stable and machine-readable.
+- Full tests, documentation checks, and any release dry run pass.
+
