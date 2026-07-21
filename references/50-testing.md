@@ -49,4 +49,3 @@ Test create uniqueness, CAS version rules, serialization of every field,
 schema migrations, restart recovery, stale attempt tokens, and terminal-run
 idempotency. H2 is useful for fast feedback but does not replace native database
 tests for dialect, locking, and transaction behavior.
-

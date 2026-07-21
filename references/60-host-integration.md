@@ -51,4 +51,3 @@ Provide metrics for proposals, control rejections, approval latency, dispatch
 latency, waiting runs, terminal outcomes, CAS conflicts, stale callbacks,
 executor saturation, and recovery actions. Alert on growing non-terminal age
 and repeated reconciliation failures.
-

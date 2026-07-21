@@ -74,4 +74,3 @@ them by state:
 
 Recovery must use the same runtime controls and CAS transitions as the normal
 path. It must not patch database rows directly.
-

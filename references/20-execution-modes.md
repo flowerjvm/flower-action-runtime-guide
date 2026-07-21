@@ -53,4 +53,3 @@ hook idempotent for the tuple of run id, attempt token, and operation id.
 Concurrent completion and cancellation are normal. Versioned CAS decides the
 single terminal winner. The losing request must observe and report the stored
 terminal truth; it must not overwrite it or issue a second domain mutation.
-

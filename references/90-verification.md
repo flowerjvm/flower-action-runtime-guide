@@ -50,4 +50,3 @@ coverage as well.
 - Recovery and duplicate delivery are idempotent.
 - Result codes and retry dispositions are stable and machine-readable.
 - Full tests, documentation checks, and any release dry run pass.
-

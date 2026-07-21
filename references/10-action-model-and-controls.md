@@ -72,4 +72,3 @@ completion, cancellation, and failure with the run id and tenant boundary.
 Trace data helps diagnose execution; audit data explains who requested what,
 which controls decided it, and what terminal result was recorded. Do not treat
 ordinary application logs as the durable audit record.
-
