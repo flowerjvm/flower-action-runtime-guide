@@ -46,9 +46,9 @@ Then read the reference that matches the task.
 ## Workflow
 
 1. Identify the business side effect and every entry point that can request it.
-2. Inspect the runtime version and public APIs in the checked-out source before
-   writing code; do not assume the Maven Central API matches the checked-out
-   pre-1.0 source line.
+2. For host integration, pin the published Maven Central `0.3.0` artifacts and
+   verify APIs against the `v0.3.0` source tag. Inspect a mutable checkout only
+   when modifying the runtime itself; its main branch may be a later SNAPSHOT.
 3. Define a stable action id and register exactly one controlled executor.
 4. Map request channel, proposer type, execution principal, tenant, run id, and
    idempotency key without collapsing them into one actor field. In 0.3,
@@ -98,8 +98,11 @@ Then read the reference that matches the task.
 
 ## Source Of Truth
 
-Prefer the checked-out runtime source and its tests when this guide and an API
-disagree. Useful upstream documents include:
+For a consuming application, the published `0.3.0` artifacts and the matching
+`v0.3.0` source tag are authoritative. Never make a distributable guide,
+sample, or plugin depend on a mutable checkout, `mavenLocal()`, or a SNAPSHOT.
+When modifying the runtime itself, its checked-out source and tests become the
+working source of truth. Useful upstream documents include:
 
 ```text
 flower-action-runtime/README.md

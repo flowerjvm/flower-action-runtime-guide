@@ -18,6 +18,18 @@ and keeps migration context for 0.1/0.2 applications. Load the related
 as well when changing Flower Flows, Steps, Guards, Workers, waits, or
 checkpoint/resume behavior.
 
+Consumer dependencies must use the exact Maven Central release, for example:
+
+```kotlin
+implementation("io.github.flowerjvm:flower-action-runtime-core:0.3.0")
+```
+
+Add `flower-action-runtime-persistence-jdbc`,
+`flower-action-runtime-workflow`, or `flower-action-runtime-eventloop` at the
+same `0.3.0` version only when the host needs that module. This skill contains
+documentation only: it does not depend on a runtime checkout, `mavenLocal()`,
+or SNAPSHOT artifacts.
+
 ## Install
 
 Install this repository root with an Agent Skills-compatible installer, or
@@ -44,3 +56,7 @@ Agents may also select it automatically when a task matches the description in
 Start with `references/00-guide-version.md`,
 `references/01-runtime-quick-rules.md`, and `references/90-verification.md`,
 then follow the reference routing in `SKILL.md`.
+
+## License
+
+Licensed under the Apache License 2.0. See `LICENSE` and `NOTICE`.

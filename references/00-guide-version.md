@@ -1,8 +1,8 @@
 # Flower Action Runtime Guide Version
 
-Guide version: `0.3.0`
+Guide version: `0.3.1`
 
-Last updated: `2026-07-22`
+Last updated: `2026-07-23`
 
 Target runtime line: `flower-action-runtime 0.3.0`
 
@@ -10,7 +10,7 @@ Latest published runtime release: `flower-action-runtime 0.3.0`
 
 Published baselines covered by migration guidance: `0.1.0` and `0.2.0`
 
-Related Flower application guide: `flower-app-guide 0.2.2`
+Related Flower application guide: `flower-app-guide 0.2.3`
 
 Scope:
 
@@ -27,5 +27,6 @@ Version policy:
 - Minor: add runtime/module guidance or a compatible workflow.
 - Major: change a host-facing control or safety rule incompatibly.
 
-The runtime is pre-1.0. Inspect the checked-out API and migration notes before
-copying examples into a host application.
+The runtime is pre-1.0. Consumer examples must use the published `0.3.0`
+artifacts and be checked against the matching `v0.3.0` source tag. A mutable
+runtime checkout may be on a later SNAPSHOT and is not a consumer dependency.
