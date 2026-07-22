@@ -12,7 +12,7 @@ The guide covers:
 - direct, Flower workflow, and Flower event-loop backend selection;
 - host integration, parity tests, and real concurrency tests.
 
-The current guide targets the published `flower-action-runtime 0.3.0` release
+The current guide targets the published `flower-action-runtime 0.3.1` release
 and keeps migration context for 0.1/0.2 applications. Load the related
 [`flower-app-guide`](https://github.com/flowerjvm/flower-agent-skills/tree/main/agent-skills/flower-app-guide)
 as well when changing Flower Flows, Steps, Guards, Workers, waits, or
@@ -21,12 +21,12 @@ checkpoint/resume behavior.
 Consumer dependencies must use the exact Maven Central release, for example:
 
 ```kotlin
-implementation("io.github.flowerjvm:flower-action-runtime-core:0.3.0")
+implementation("io.github.flowerjvm:flower-action-runtime-core:0.3.1")
 ```
 
 Add `flower-action-runtime-persistence-jdbc`,
 `flower-action-runtime-workflow`, or `flower-action-runtime-eventloop` at the
-same `0.3.0` version only when the host needs that module. This skill contains
+same `0.3.1` version only when the host needs that module. This skill contains
 documentation only: it does not depend on a runtime checkout, `mavenLocal()`,
 or SNAPSHOT artifacts.
 
