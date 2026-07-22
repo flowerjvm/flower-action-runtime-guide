@@ -1,6 +1,6 @@
 ---
 name: flower-action-runtime-guide
-description: Use when building, modifying, reviewing, migrating, or testing Java code that uses flower-action-runtime, including ActionProposal and ActionDefinition design, registry/validation/policy/approval/pre-execution controls, synchronous/async/deferred ActionExecutor selection, ActionRun and RunStore persistence, JDBC CAS concurrency, completion/cancellation/recovery, Flower workflow or event-loop backends, and 0.1-to-0.2 migration.
+description: Use when building, modifying, reviewing, migrating, or testing Java code that uses flower-action-runtime, including ActionProposal and ActionDefinition design, registry/validation/policy/approval/pre-execution controls, tenant-scoped duplicate handling, explicit failure retry policy, synchronous/async/deferred executor selection, ActionRun and RunStore persistence, JDBC CAS concurrency, completion/cancellation/recovery, Flower workflow or event-loop backends, and 0.1/0.2-to-0.3 migration.
 ---
 
 # Flower Action Runtime Guide
@@ -47,11 +47,12 @@ Then read the reference that matches the task.
 
 1. Identify the business side effect and every entry point that can request it.
 2. Inspect the runtime version and public APIs in the checked-out source before
-   writing code; do not assume the Maven Central `0.1.0` API matches the `0.2`
-   source line.
+   writing code; do not assume the Maven Central API matches the checked-out
+   pre-1.0 source line.
 3. Define a stable action id and register exactly one controlled executor.
 4. Map request channel, proposer type, execution principal, tenant, run id, and
-   idempotency key without collapsing them into one actor field.
+   idempotency key without collapsing them into one actor field. In 0.3,
+   `ActionOrigin` no longer exists.
 5. Configure validation, policy, approval, duplicate handling, audit/trace, and
    the pre-execution guard before exposing the action.
 6. Choose the executor mode by lifetime and durability, not by convenience.
@@ -73,7 +74,8 @@ Then read the reference that matches the task.
 - Do not block Flower Worker or EventWorker ticks with domain work, HTTP, LLM,
   tools, sleeps, or `Future.get()`.
 - Use `ActionExecutionResult.code()` and `RetryDisposition` for machine
-  decisions. Do not parse human messages.
+  decisions. Do not parse human messages or leave failure retry safety
+  implicit.
 - Give every action request a unique `runId`. Use the idempotency key to group
   transport retries; do not reuse a run id for a new request.
 - Make every `RunStore` transition versioned CAS. Do not add an unconditional
@@ -81,6 +83,16 @@ Then read the reference that matches the task.
 - Authenticate callback callers and verify tenant, run id, and attempt token.
 - Make external cancellation hooks idempotent for the same run attempt and
   operation id.
+- Scope duplicate reservations by at least tenant, action id, and idempotency
+  key. Add principal or resource scope when an existing result is not safely
+  shareable within the tenant.
+- Resolve, validate, and authorize the current request before duplicate
+  reservation or `RETURN_EXISTING` result lookup.
+- Treat `CANCELLED` as the runtime's terminal acceptance decision, not proof
+  that an external operation physically stopped.
+- Treat deferred dispatch as at-least-once-capable integration, not an
+  exactly-once guarantee. Require deterministic operation ids, idempotent
+  dispatch, authenticated callbacks, reconciliation, and an orphan policy.
 - Treat `ActionRun` as runtime lifecycle truth. Flower checkpoints, events,
   signals, futures, and callback payloads are orchestration or delivery data.
 
@@ -96,4 +108,5 @@ flower-action-runtime/docs/architecture/DEFERRED_ACTION_EXECUTION.md
 flower-action-runtime/docs/architecture/ACTION_RUN_PERSISTENCE.md
 flower-action-runtime/docs/architecture/EXECUTION_BACKEND_STRATEGY.md
 flower-action-runtime/docs/architecture/V0_2_MIGRATION_AND_MODULE_IMPACT.md
+flower-action-runtime/docs/architecture/V0_3_MIGRATION_AND_MODULE_IMPACT.md
 ```

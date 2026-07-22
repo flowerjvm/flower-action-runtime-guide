@@ -42,11 +42,19 @@ coverage as well.
 
 - Every entry point creates a proposal instead of mutating the domain directly.
 - Identity, tenant, run id, and idempotency semantics are explicit.
+- Duplicate reservation is scoped by tenant, action, and idempotency key, with
+  any required principal/resource visibility boundary.
+- Registry, validation, and policy run before duplicate lookup; a denied caller
+  cannot receive an existing authorized result.
 - Approval resume repeats definition, validation, policy, and guard checks.
 - Executor mode matches work lifetime, blocking behavior, and durability.
 - Deferred callbacks authenticate and verify the current attempt token.
+- Deferred dispatch has deterministic operation identity, idempotency,
+  reconciliation, timeout, and orphan policy; exactly-once is not assumed.
 - All externally visible transitions use durable versioned CAS.
 - Real thread/connection races prove one terminal winner.
 - Recovery and duplicate delivery are idempotent.
 - Result codes and retry dispositions are stable and machine-readable.
+- Unknown failures do not silently become automatic retries, and unconfirmed
+  external cancellation remains visible.
 - Full tests, documentation checks, and any release dry run pass.

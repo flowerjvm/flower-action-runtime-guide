@@ -1,12 +1,14 @@
 # Flower Action Runtime Guide Version
 
-Guide version: `0.1.0`
+Guide version: `0.3.0`
 
 Last updated: `2026-07-22`
 
-Target runtime release: `flower-action-runtime 0.2.0`
+Target runtime line: `flower-action-runtime 0.3.0`
 
-Latest published baseline covered by migration guidance: `0.1.0`
+Latest published runtime release: `flower-action-runtime 0.3.0`
+
+Published baselines covered by migration guidance: `0.1.0` and `0.2.0`
 
 Related Flower application guide: `flower-app-guide 0.2.2`
 

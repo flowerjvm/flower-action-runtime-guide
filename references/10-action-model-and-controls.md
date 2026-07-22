@@ -9,7 +9,7 @@ whether execution is allowed.
 
 Use a stable action id such as `document.publish` or `invoice.cancel`. Register
 one `ActionDefinition` for that id and keep the actual domain mutation inside
-its `ActionExecutor`.
+its registered executor.
 
 ## Keep Identities Separate
 
@@ -29,14 +29,35 @@ trust an AI-generated payload or an arbitrary callback body for these values.
 
 ## Required Control Order
 
-Preserve this order for initial execution and every resumed execution:
+The 0.3 initial pipeline uses this order:
+
+```text
+record proposal / create ActionRun
+  -> registry resolution
+  -> input validation
+  -> policy evaluation
+  -> duplicate reservation
+  -> optional approval request
+  -> pre-execution guard
+  -> executor dispatch
+  -> result persistence and audit
+```
+
+Registry resolution, validation, and policy run before duplicate reservation.
+An invalid or unauthorized request therefore cannot obtain a cached result via
+`RETURN_EXISTING`. A production duplicate policy must still scope keys by at
+least `tenantId + actionId + idempotencyKey`. If a stored result is not safely
+visible to every authorized principal in that tenant, add principal/resource
+scope or reject the duplicate without returning the result. Never use a global
+`idempotencyKey` alone.
+
+Approval resume does not reserve again; it keeps the original reservation and
+uses this order:
 
 ```text
 registry resolution
   -> input validation
-  -> policy evaluation
-  -> approval decision
-  -> duplicate handling
+  -> policy re-evaluation
   -> pre-execution guard
   -> executor dispatch
   -> result persistence and audit
@@ -64,6 +85,16 @@ Examples of useful result-code families include validation rejection, policy
 denial, approval pending or rejected, duplicate request, dispatch failure,
 external timeout, stale attempt, cancellation, and domain-specific rejection.
 Keep codes stable across wording and localization changes.
+
+Unknown execution failures are not safely retryable because a side effect may
+already have occurred. Prefer the explicit factories:
+
+```text
+retryableFailure    AFTER_BACKOFF
+correctableFailure  AFTER_CORRECTION
+permanentFailure    NEVER
+manualReviewFailure MANUAL_REVIEW
+```
 
 ## Audit And Trace
 

@@ -25,11 +25,15 @@ decisions and terminal results for the same proposal.
 
 ## EventLoopActionRuntime
 
-Use the event-loop backend when approval or external events must be represented
-as non-blocking waits with durable resume behavior. Event-loop callbacks and
-steps must remain short. Submit actual action work to a host-managed executor,
-for example through an explicit asynchronous continuation, so the event-loop
-thread never performs blocking domain work.
+Use the current event-loop backend when approval waits and approval deadlines
+should be represented as non-blocking EventFlows and reconstructed from a
+durable `RunStore`. It does not turn general async/deferred execution or every
+external callback into an EventFlow. Those completion paths still use the core
+Run lifecycle and host callback/reconciliation adapters.
+
+Event-loop callbacks and steps must remain short. Submit actual action work to
+a host-managed executor so the event-loop thread never performs blocking domain
+work.
 
 The event-loop state is orchestration state. `ActionRun` remains the action
 lifecycle truth, including the terminal winner in completion/cancellation

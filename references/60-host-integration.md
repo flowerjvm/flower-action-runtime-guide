@@ -10,6 +10,13 @@ Keep the domain operation in an application/domain service called by the
 registered executor. This preserves one side-effect boundary regardless of how
 many request channels exist.
 
+Use one host-owned proposal factory or governed-action service to populate the
+verbose proposal identity consistently. Prefer `ActionProposal.builder(...)`
+at that boundary; do not let controllers, bots, and schedulers independently
+invent request channel, proposer type, principal, tenant, and idempotency
+semantics. On 0.3, populate request channel and proposer type explicitly;
+the legacy origin field has been removed.
+
 ## Build Trusted Context
 
 Resolve principal, roles, tenant or office, and request channel from trusted
@@ -20,6 +27,12 @@ current resource facts.
 Create a unique run id for each accepted request. Reuse an idempotency key for
 retries of the same logical operation. Do not reuse the run id as the
 idempotency key or create a second run for a duplicate callback.
+
+Scope duplicate storage and SQL uniqueness by at least tenant, action id, and
+idempotency key. Add principal/resource visibility when returning an existing
+result. In 0.3, policy runs before duplicate lookup, so an unauthorized request
+cannot read a cached result; the storage scope remains necessary for tenant
+isolation and correct idempotency.
 
 ## Persistence And Transactions
 
@@ -34,6 +47,10 @@ arbitrary database mutation and external message globally atomic.
 Expose status by reading the persisted `ActionRun`; do not infer completion
 from HTTP connection state, a local future, or a queue message alone.
 
+Classify every failure with a stable code and explicit retry disposition. Use
+`AFTER_BACKOFF` only for a known transient condition. Use `MANUAL_REVIEW` when
+the executor may have produced a side effect before the failure became visible.
+
 ## Deferred Callback Boundary
 
 Authenticate callbacks independently of the original request. Resolve the
@@ -44,6 +61,16 @@ Invoke the runtime completion API and return its consistent stored outcome.
 Rate-limit callbacks and record rejected attempts without leaking whether a
 run exists in another tenant. Do not accept a caller-supplied tenant id as
 sufficient authorization.
+
+For deferred dispatch, derive a deterministic operation id, make enqueue/send
+idempotent, and reconcile old `RUNNING` as well as `WAITING_EXTERNAL` Runs. Use
+a transactional outbox where the host must atomically connect its database to
+queue delivery.
+
+Do not render every runtime `CANCELLED` result as confirmed external
+cancellation. Preserve cancellation codes, warning output, and
+`MANUAL_REVIEW` so operators can distinguish “runtime closed” from “remote work
+confirmed stopped”.
 
 ## Operational Readiness
 

@@ -34,6 +34,22 @@ runtime SPI, protect it operationally, and record a separate audit trail.
 not use it for approval, async, deferred, callbacks, cancellation, status
 queries, restart recovery, or multiple runtime instances.
 
+## Duplicate Scope
+
+The 0.3 pipeline resolves, validates, and authorizes the current request before
+duplicate reservation or `RETURN_EXISTING`. Scope a durable reservation by at
+least:
+
+```text
+tenantId + actionId + idempotencyKey
+```
+
+All 0.3 duplicate-policy operations receive the trusted execution context, so
+terminal bookkeeping retains the same tenant scope as reservation. Add principal
+or resource-visibility scope when returning an existing result could expose
+data across actors. A global unique constraint on `idempotencyKey` alone is not
+tenant safe.
+
 ## JDBC CAS
 
 The decisive JDBC transition should be one atomic statement equivalent to:
@@ -59,6 +75,11 @@ CAS prevents stale state overwrites. It does not by itself provide worker
 leasing, queue acknowledgement, outbox delivery, exactly-once side effects, or
 recovery ownership. External effects still need idempotency, and distributed
 workers may need claim/lease semantics supplied by their queue or job system.
+
+CAS also does not atomically join `ActionRun` persistence to an external queue
+or remote side effect. Use an outbox or an idempotent deterministic dispatch
+protocol and reconcile the crash window between external acceptance and
+`WAITING_EXTERNAL` persistence.
 
 ## Recovery
 

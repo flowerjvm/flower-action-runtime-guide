@@ -10,11 +10,18 @@ Cover at least:
 - changed policy or invalid input after approval;
 - pre-execution guard rejection immediately before dispatch;
 - duplicate idempotency behavior;
+- an unauthorized request cannot obtain an authorized request's completed
+  result by reusing its idempotency key;
+- same idempotency key across different tenants and actions without result
+  leakage;
 - stable result code and retry disposition;
+- conservative default failure plus every explicit failure factory;
 - synchronous, async success/failure, and deferred dispatch;
 - valid, stale, forged, duplicate, and cross-tenant completion callbacks;
 - cancellation before dispatch, while waiting externally, and after terminal
   completion;
+- external cancellation-hook failure remains distinguishable from confirmed
+  domain cancellation;
 - audit events for every important decision and transition.
 
 ## Backend Parity
@@ -49,3 +56,8 @@ Test create uniqueness, CAS version rules, serialization of every field,
 schema migrations, restart recovery, stale attempt tokens, and terminal-run
 idempotency. H2 is useful for fast feedback but does not replace native database
 tests for dialect, locking, and transaction behavior.
+
+For deferred dispatch, inject failure after the external system accepts a
+deterministic operation id but before `WAITING_EXTERNAL` is stored. Prove that
+reconciliation finds or safely classifies the orphan without issuing a second
+non-idempotent side effect.

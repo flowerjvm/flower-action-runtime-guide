@@ -8,10 +8,11 @@ that performs the work.
 ```text
 UI / API / CLI / Batch / Scheduler / MCP / AI planner
 -> ActionProposal
+-> record proposal / create ActionRun
 -> registry
--> duplicate reservation
 -> input validation
 -> policy
+-> duplicate reservation
 -> optional approval
 -> policy revalidation
 -> PreExecutionGuard
@@ -59,9 +60,9 @@ Use the stable result `code` and `RetryDisposition`; keep `message` for humans.
 ## Pick The Execution Mode
 
 ```text
-ActionExecutor          finishes in the initiating call
+SynchronousActionExecutor finishes in the initiating call
 AsyncActionExecutor     short in-process async work on a bounded host lane
-DeferredActionExecutor durable queue/remote worker/callback/restart-safe work
+DeferredActionExecutor externally owned queue/worker/callback work
 ```
 
 Use `RunStore.noop()` only for purely synchronous demos/tests. Approval, async,
@@ -76,3 +77,10 @@ deferred completion, cancellation, and recovery need a queryable store.
 - Make terminal methods idempotent: repeat calls return the stored result.
 - CAS protects Run state, not external exactly-once effects, distributed work
   ownership, or leader election.
+- Resolve, validate, and authorize before duplicate lookup. Still scope
+  duplicates by at least `tenantId + actionId + idempotencyKey` and add
+  principal/resource visibility when existing results are not shareable.
+- Classify failures explicitly. Unknown failures default to `MANUAL_REVIEW`;
+  only known transient failures should use `AFTER_BACKOFF`.
+- A terminal `CANCELLED` Run rejects later normal completion but does not prove
+  that an external operation physically stopped.
