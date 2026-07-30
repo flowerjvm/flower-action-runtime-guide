@@ -8,17 +8,18 @@ the source of truth for status queries, recovery, completion, and cancellation.
 Flower checkpoints, queue messages, futures, and callback payloads may help
 orchestrate work, but none of them replaces the run record.
 
-Persist every externally meaningful transition, including approval waiting,
-dispatch acceptance, `WAITING_EXTERNAL`, terminal completion, cancellation,
-and failure. A transition visible to another process must not exist only in
-memory.
+Record every externally meaningful transition in the selected `RunStore`,
+including approval waiting, dispatch acceptance, `WAITING_EXTERNAL`, terminal
+completion, cancellation, and failure. A transition that must survive restart
+or be visible to another process must not exist only in memory.
 
 ## RunStore Contract
 
 A durable `RunStore` implementation must provide these invariants:
 
 - `create` fails when the run id already exists.
-- `findById` returns the current committed state.
+- `find(String runId)` returns the current committed state as an
+  `Optional<ActionRun>`.
 - `compareAndSet(expected, updated)` succeeds only when the stored run has the
   expected id and version and the update advances exactly one version.
 - No public unconditional update, upsert, or force-overwrite operation is used

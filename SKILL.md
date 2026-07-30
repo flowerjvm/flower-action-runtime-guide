@@ -1,6 +1,6 @@
 ---
 name: flower-action-runtime-guide
-description: Use when building, modifying, reviewing, migrating, or testing Java code that uses flower-action-runtime, including ActionProposal and ActionDefinition design, registry/validation/policy/approval/pre-execution controls, tenant-scoped duplicate handling, explicit failure retry policy, synchronous/async/deferred executor selection, ActionRun and RunStore persistence, JDBC CAS concurrency, completion/cancellation/recovery, Flower workflow or event-loop backends, and 0.1/0.2-to-0.3 migration.
+description: Use when creating, building, modifying, reviewing, migrating, or testing Java code that uses flower-action-runtime, including new Maven or Gradle project setup, Maven Central dependency and backend-module selection, ActionProposal and ActionDefinition design, registry/validation/policy/approval/pre-execution controls, tenant-scoped duplicate handling, explicit failure retry policy, synchronous/async/deferred executor selection, ActionRun and RunStore persistence, JDBC CAS concurrency, completion/cancellation/recovery, Flower workflow or event-loop backends, and 0.1/0.2-to-0.3 migration.
 ---
 
 # Flower Action Runtime Guide
@@ -27,6 +27,9 @@ Then read the reference that matches the task.
 
 ## Reference Routing
 
+- Creating a Maven or Gradle host, choosing Action Runtime modules, adding or
+  upgrading dependencies, or resolving Flower compatibility: read
+  `references/05-build-and-module-selection.md`.
 - Designing actions, proposal identity, definitions, policy, approval,
   pre-execution checks, results, audit, or idempotency: read
   `references/10-action-model-and-controls.md`.
@@ -46,9 +49,12 @@ Then read the reference that matches the task.
 ## Workflow
 
 1. Identify the business side effect and every entry point that can request it.
-2. For host integration, pin the published Maven Central `0.3.1` artifacts and
-   verify APIs against the `v0.3.1` source tag. Inspect a mutable checkout only
-   when modifying the runtime itself; its main branch may be a later SNAPSHOT.
+2. Before changing a host build, read
+   `references/05-build-and-module-selection.md`, preserve compatible host
+   dependency management, and select only requirement-backed modules. Pin the
+   published Maven Central `0.3.1` artifacts and verify APIs against the
+   `v0.3.1` source tag. Inspect a mutable checkout only when modifying the
+   runtime itself; its main branch may be a later SNAPSHOT.
 3. Define a stable action id and register exactly one controlled executor.
 4. Map request channel, proposer type, execution principal, tenant, run id, and
    idempotency key without collapsing them into one actor field. In 0.3,
@@ -56,12 +62,73 @@ Then read the reference that matches the task.
 5. Configure validation, policy, approval, duplicate handling, audit/trace, and
    the pre-execution guard before exposing the action.
 6. Choose the executor mode by lifetime and durability, not by convenience.
-7. Use a queryable durable `RunStore` for approval, async, deferred, callback,
-   cancellation, or restart-sensitive work.
+7. Use a queryable `RunStore` for approval, async, deferred, callback, or
+   cancellation work. `InMemoryRunStore` may be sufficient for same-JVM
+   local/test use; use a shared durable store for restart-sensitive,
+   multi-instance, or production deferred work.
 8. If Flower drives the backend, keep Worker/EventWorker ticks non-blocking and
    keep governance semantics in the shared action pipeline.
-9. Add focused failure, resume, race, and recovery tests, then run the complete
-   verification appropriate to the changed modules.
+9. Add focused failure, resume, race, and recovery tests. Before reporting the
+   work complete, map every applicable control to a named test and apply the
+   controlled-action completion gate below, then run the complete verification
+   appropriate to the changed modules.
+
+## Controlled-Action Completion Gate
+
+A generic duplicate test is not evidence for every duplicate-safety property.
+First classify completed-result visibility as tenant-global/shareable,
+principal-restricted, resource-bound, or a combination. Do not invent a
+principal or resource boundary merely to satisfy this checklist. Keep each
+applicable scenario as a distinct named test:
+
+1. When policy has a denied-principal boundary, complete an authorized request,
+   then retry the same tenant, action id, idempotency key, and resource when one
+   applies, as a denied execution principal. Assert policy denial before
+   `RETURN_EXISTING`, no cached output/result or protected run/resource
+   disclosure, and no additional domain side effect.
+2. When the action or result is resource-bound, complete a request for resource
+   A, then reuse the same tenant, action id, and idempotency key for resource B
+   with a request that is otherwise valid and authorized for B. Assert that A's
+   result and protected data are not returned for B.
+
+Record a short N/A reason for a genuinely absent visibility dimension or an
+intentionally shareable result.
+
+When a stateful custom duplicate policy claims concurrent duplicate suppression
+and caches or finalizes reservations, also run a deterministic full-pipeline
+race. Both contenders must call the Action Runtime; any accepted request must
+pass through the registered executor. Place barriers or latches immediately
+before the atomic reserve/complete transitions and never wait while holding the
+per-scope lock. Assert exactly one `DuplicateActionDecisionType.ACCEPT`
+reservation, exactly one executor invocation/domain side effect, and no
+terminal overwrite. During the race the duplicate may observe the in-progress
+rejection or the original result; every later duplicate must return the
+unchanged original cached terminal result. A policy-only race is still useful
+for ownership and ABA assertions, but it does not prove the runtime side-effect
+count and cannot replace this full-pipeline test.
+
+## Unsafe Control-Bypass Response Contract
+
+When a request asks an admin, callback, retry, recovery, or other entry point
+to call the side effect directly or return an existing result before
+authorization, the agent-authored user-facing response must:
+
+1. Explicitly refuse both the direct side-effect path and the
+   pre-authorization duplicate/result lookup.
+2. State that trusted execution principal and tenant come from host context
+   and remain separate from request channel and proposer metadata.
+3. Preserve definition resolution, validation, authorization/policy,
+   visibility-safe duplicate handling, approval, audit, `PreExecutionGuard`,
+   and the registered executor boundary.
+4. State that approval/resume re-resolves the definition, re-validates current
+   input, re-evaluates current policy, and runs `PreExecutionGuard` immediately
+   before dispatch.
+5. Explain that an early or insufficiently scoped cached-result lookup can
+   disclose another tenant's, principal's, or resource's result.
+
+Do not leave these consequences and controls implicit or only in referenced
+guidance, and do not suggest a feature flag, alternate service, raw SQL, or
+callback path that recreates the bypass.
 
 ## Non-Negotiable Rules
 
@@ -86,6 +153,36 @@ Then read the reference that matches the task.
 - Scope duplicate reservations by at least tenant, action id, and idempotency
   key. Add principal or resource scope when an existing result is not safely
   shareable within the tenant.
+- In `0.3.1`, `InMemoryDuplicateActionPolicy` scopes by tenant, action id, and
+  idempotency key. Do not use it alone when a cached result contains
+  principal- or resource-restricted data. Authorizing the current request
+  before lookup is insufficient when that authorization may concern a
+  different resource from the cached result. Bind reservation/result lookup to
+  trusted principal or resource identity, or reject the duplicate without
+  returning the cached result. When an applicable principal or resource
+  visibility boundary exists, run the corresponding denied-principal or
+  authorized cross-resource test from the completion gate. Otherwise record
+  that dimension as N/A without inventing one.
+- The `0.3.1` `InMemoryDuplicateActionPolicy` is not a concurrent duplicate
+  control: it stores completed and running state separately, so
+  reserve-versus-complete can accept the same logical operation again, and
+  owner-blind `release()` can remove a newer reservation. Its test/demo/local
+  designation does not remove those same-JVM races. Use it only when calls are
+  serialized and that limitation is acceptable; otherwise replace it with a
+  custom owner-aware atomic policy or a durable policy.
+- Treat duplicate reservation, completion, and release as one atomic
+  owner-aware per-scope state machine. Retain the current reservation owner
+  from trusted execution identity, normally the unique `runId`; apply
+  `complete()` or `release()` only while that caller still owns the
+  reservation. Do not coordinate `completed` and `running` through separate
+  unguarded reads and writes. A reserve racing with completion must observe the
+  existing reservation or completed result, never accept again or overwrite
+  terminal truth. A stale or repeated completion/release must not alter a
+  newer owner's reservation. Use one lock or atomic map transition in-process
+  and durable uniqueness/CAS in production. Test reserve-versus-complete plus
+  stale/double-complete and stale/double-release ABA sequences with barriers
+  or latches; prove one accepted execution, one side effect, stable terminal
+  truth, and preservation of the current owner.
 - Resolve, validate, and authorize the current request before duplicate
   reservation or `RETURN_EXISTING` result lookup.
 - Treat `CANCELLED` as the runtime's terminal acceptance decision, not proof

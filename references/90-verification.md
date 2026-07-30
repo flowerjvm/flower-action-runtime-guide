@@ -46,13 +46,29 @@ coverage as well.
   any required principal/resource visibility boundary.
 - Registry, validation, and policy run before duplicate lookup; a denied caller
   cannot receive an existing authorized result.
+- When policy has a denied-principal boundary, a named test first caches an
+  authorized result, then retries the same tenant, action, idempotency key, and
+  resource when applicable as a denied principal and proves denial, zero
+  result/protected-data disclosure, and no additional side effect.
+- When the action or result is resource-bound, a named test reuses the same
+  tenant, action, and idempotency key for resource B with a request otherwise
+  valid and authorized for B, and proves that resource A's cached/protected data
+  does not cross the boundary.
+- N/A is recorded for absent visibility dimensions or intentionally shared
+  results; tenant-global/shareable semantics are not rewritten merely to
+  satisfy the checklist.
 - Approval resume repeats definition, validation, policy, and guard checks.
 - Executor mode matches work lifetime, blocking behavior, and durability.
 - Deferred callbacks authenticate and verify the current attempt token.
 - Deferred dispatch has deterministic operation identity, idempotency,
   reconciliation, timeout, and orphan policy; exactly-once is not assumed.
 - All externally visible transitions use durable versioned CAS.
-- Real thread/connection races prove one terminal winner.
+- Real thread/connection races prove one terminal winner. For a stateful custom
+  policy that claims concurrent duplicate suppression and caches/finalizes
+  reservations, a deterministic full-pipeline reserve-versus-complete race
+  goes through the runtime and executor and proves one `ACCEPT`, one executor
+  invocation/domain side effect, and an unchanged original result on later
+  duplicates; policy-only ABA tests are supplemental.
 - Recovery and duplicate delivery are idempotent.
 - Result codes and retry dispositions are stable and machine-readable.
 - Unknown failures do not silently become automatic retries, and unconfirmed

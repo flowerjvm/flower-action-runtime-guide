@@ -27,9 +27,12 @@ decisions and terminal results for the same proposal.
 
 Use the current event-loop backend when approval waits and approval deadlines
 should be represented as non-blocking EventFlows and reconstructed from a
-durable `RunStore`. It does not turn general async/deferred execution or every
-external callback into an EventFlow. Those completion paths still use the core
-Run lifecycle and host callback/reconciliation adapters.
+queryable `RunStore`. `InMemoryRunStore` may be sufficient for same-JVM
+local/test use; restart-sensitive, multi-instance, or production recovery
+requires a shared durable store. The backend does not turn general
+async/deferred execution or every external callback into an EventFlow. Those
+completion paths still use the core Run lifecycle and host
+callback/reconciliation adapters.
 
 Event-loop callbacks and steps must remain short. Submit actual action work to
 a host-managed executor so the event-loop thread never performs blocking domain

@@ -36,15 +36,19 @@ isolation and correct idempotency.
 
 ## Persistence And Transactions
 
-Use a durable store when a result can outlive the request or process. Apply the
-runtime's database migrations through the host's migration system and confirm
-the schema owner and tenant isolation policy.
+Use a queryable `RunStore` when a result can outlive the request.
+`InMemoryRunStore` may be sufficient for same-JVM local/test use, but use a
+shared durable store when a result can outlive the process, multiple instances
+must observe it, or production deferred/recovery behavior depends on it. When
+using JDBC persistence, apply the runtime's database migrations through the
+host's migration system and confirm the schema owner and tenant isolation
+policy.
 
 If an executor changes domain state and emits an event, use the host's normal
 transactional outbox or after-commit mechanism. The runtime cannot make an
 arbitrary database mutation and external message globally atomic.
 
-Expose status by reading the persisted `ActionRun`; do not infer completion
+Expose status by reading the stored `ActionRun`; do not infer completion
 from HTTP connection state, a local future, or a queue message alone.
 
 Classify every failure with a stable code and explicit retry disposition. Use

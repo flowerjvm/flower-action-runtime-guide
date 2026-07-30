@@ -10,8 +10,14 @@ Cover at least:
 - changed policy or invalid input after approval;
 - pre-execution guard rejection immediately before dispatch;
 - duplicate idempotency behavior;
-- an unauthorized request cannot obtain an authorized request's completed
-  result by reusing its idempotency key;
+- when policy has a denied-principal boundary, after an authorized request
+  completes, a retry for the same tenant, action, idempotency key, and resource
+  when applicable under a denied execution principal is rejected without
+  receiving cached output/result or protected run/resource data and without
+  another domain side effect;
+- when the action or result is resource-bound, same-tenant/action/key reuse for
+  resource B by a request otherwise valid and authorized for B does not return
+  resource A's cached result or protected data;
 - same idempotency key across different tenants and actions without result
   leakage;
 - stable result code and retry disposition;
@@ -49,6 +55,38 @@ complete-versus-cancel. For JDBC, use separate connections and, when the host
 can have multiple instances, two runtime objects sharing the same database.
 Repeat the focused concurrency class enough times to catch accidental timing
 dependencies, but coordinate starts with barriers rather than sleeps.
+
+For a stateful custom `DuplicateActionPolicy` that claims concurrent duplicate
+suppression and caches or finalizes reservations, also exercise
+reserve-versus-complete on the same scope. Run both contenders through the
+Action Runtime and registered executor. Use a test decorator or hook to place
+barriers immediately before the atomic reserve/complete transitions; never wait
+while holding the per-scope lock. Assert exactly one
+`DuplicateActionDecisionType.ACCEPT` reservation, one executor invocation and
+domain side effect, no terminal overwrite, and no deadlock or timeout. During
+the race the duplicate may receive the documented in-progress denial or the
+original result; every later duplicate must return the unchanged original
+cached terminal result. Sequential calls cannot prove this property. A direct
+policy-only test with a synthetic result proves state-machine behavior, not the
+one-side-effect runtime contract, and does not replace the full-pipeline race.
+
+Exercise reservation ownership and ABA sequences as well. Reserve as owner A,
+release A, reserve as owner B, then deliver a delayed or repeated
+`complete()`/`release()` from A. A third reserve must still observe B as the
+current owner and must not be accepted. Complete B and prove that every later
+duplicate returns B's stable terminal result. Repeat with the stale operation
+racing the new reserve, using barriers or latches rather than sleeps. This
+requires owner-aware state, normally keyed to trusted `runId`; a scope-only
+running flag cannot prove the contract.
+
+Do not collapse visibility and concurrency into one generic "duplicate" test.
+Keep named tests for each applicable property: denied-principal cached-result
+replay, authorized cross-resource reuse, the full-pipeline
+reserve-versus-complete race, and policy-level ownership/ABA behavior. Record
+why a principal/resource/race case is N/A when that boundary or stateful
+concurrency claim is genuinely absent; do not invent one. Before reporting
+completion, point each applicable duplicate-safety claim to its specific test
+and assertion.
 
 ## Persistence And Recovery Tests
 

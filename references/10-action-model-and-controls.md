@@ -51,6 +51,26 @@ visible to every authorized principal in that tenant, add principal/resource
 scope or reject the duplicate without returning the result. Never use a global
 `idempotencyKey` alone.
 
+Reservation, completion, and release must also form one atomic state machine
+per duplicate scope. A policy that reads a completed-result map and later adds
+to a separate running set has a completion race: the original can publish its
+result and remove its reservation between those operations, allowing the
+duplicate to be accepted and later overwrite the terminal result. Use a single
+lock or atomic map transition for in-process policies and durable
+uniqueness/CAS for production policies. A reserve concurrent with completion
+must return either an in-progress decision or the stored result, never a new
+acceptance.
+
+The `0.3.1` `InMemoryDuplicateActionPolicy` has exactly that separate-map
+limitation and also removes running state without checking which request owns
+the reservation. It is suitable only for serialized test/demo/local use where
+those races are explicitly accepted, not for concurrent duplicate control.
+When concurrency is possible, use a custom policy whose per-scope state stores
+the reservation owner from trusted context, normally the unique `runId`.
+`complete()` and `release()` may change that scope only while the caller still
+owns it. Delayed or repeated completion/release from an older owner must never
+remove a newer reservation or replace its result.
+
 Approval resume does not reserve again; it keeps the original reservation and
 uses this order:
 
