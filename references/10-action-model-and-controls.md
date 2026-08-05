@@ -61,7 +61,7 @@ uniqueness/CAS for production policies. A reserve concurrent with completion
 must return either an in-progress decision or the stored result, never a new
 acceptance.
 
-The `0.3.1` `InMemoryDuplicateActionPolicy` has exactly that separate-map
+The `0.3.2` `InMemoryDuplicateActionPolicy` has exactly that separate-map
 limitation and also removes running state without checking which request owns
 the reservation. It is suitable only for serialized test/demo/local use where
 those races are explicitly accepted, not for concurrent duplicate control.

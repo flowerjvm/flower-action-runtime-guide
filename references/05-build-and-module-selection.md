@@ -23,9 +23,9 @@ decision map, not a required bundle.
    test setup before selecting modules.
 3. Preserve compatible host dependency management and add only modules
    justified by the requirements.
-4. Keep every Action Runtime module on `0.3.1`. When the host directly declares
+4. Keep every Action Runtime module on `0.3.2`. When the host directly declares
    the Flower framework artifacts `flower-core` or `flower-eventloop`, align
-   those framework artifacts to Flower `0.1.1`.
+   those framework artifacts to Flower `0.1.2`.
 5. Use Maven Central; do not substitute a SNAPSHOT, `mavenLocal()`, or a
    neighboring source build.
 6. If host code directly imports a module's public API, declare that module
@@ -33,29 +33,33 @@ decision map, not a required bundle.
 7. State the modules selected, the requirements that selected them, and the
    optional modules deliberately omitted.
 
-Action Runtime `0.3.1` requires Java 21 or newer. There is no Action Runtime
+Action Runtime `0.3.2` requires Java 21 or newer. There is no Action Runtime
 Spring Boot starter in this release; wire registry, policy, stores, executors,
 runtime, and any Spring beans explicitly.
 
 ## Published Modules
 
 All application-facing coordinates use group `io.github.flowerjvm` and version
-`0.3.1`.
+`0.3.2`.
 
 | Requirement | Artifact | Add when | Leave out when |
 | --- | --- | --- | --- |
 | Direct governed-action pipeline | `flower-action-runtime-core` | Any Action Runtime control boundary is required | No governed action is required |
+| Flower observation adapter | `flower-action-runtime-observability` | The host projects payload-light Action audit lifecycle facts into a shared `FlowerObservationSink` | The host needs only authoritative Action audit records or has no common Flower observation pipeline |
 | Flower Flow/Step backend | `flower-action-runtime-workflow` | The shared pipeline stages need Flower Flow/Step visibility | Direct runtime is sufficient; do not use it as a durable-wait backend |
 | JDBC `ActionRun` persistence | `flower-action-runtime-persistence-jdbc` | JDBC is the chosen durable `RunStore` | A custom shared store or a same-JVM local/test `InMemoryRunStore` is sufficient |
 | Event-loop approval/resume backend | `flower-action-runtime-eventloop` | Approval waits, deadlines, and resume justify the experimental Flower EventFlow backend | Direct/workflow execution is sufficient; do not use it as a generic async executor |
 
-`workflow` brings Action Runtime core and `flower-core:0.1.1`.
-`eventloop` brings Action Runtime core and `flower-eventloop:0.1.1`.
+`observability` brings Action Runtime core and `flower-observability:0.1.2`.
+It mirrors safe lifecycle facts and does not replace the authoritative
+`AuditSink` business record.
+`workflow` brings Action Runtime core and `flower-core:0.1.2`.
+`eventloop` brings Action Runtime core and `flower-eventloop:0.1.2`.
 `persistence-jdbc` brings Action Runtime core but no production JDBC driver.
 Do not add both Flower backends by default; select each only for a demonstrated
 execution need.
 
-Action Runtime `0.3.1` is pre-1.0 and its APIs may change. The
+Action Runtime `0.3.2` is pre-1.0 and its APIs may change. The
 `flower-action-runtime-eventloop` backend is experimental. Pin exact versions
 and validate that backend's operational behavior before selecting it for
 production.
@@ -65,6 +69,7 @@ production.
 | Need | Minimum composition |
 | --- | --- |
 | Synchronous governed action | `flower-action-runtime-core` |
+| Correlated Flower observation stream | Core plus `flower-action-runtime-observability` and a host-owned `FlowerObservationSink` |
 | Short-lived same-JVM async, approval, or cancellation | Core plus a queryable `InMemoryRunStore` may be sufficient for local/test use |
 | Restart-sensitive, multi-instance, or production deferred action | Core plus a queryable shared durable `RunStore`; add `persistence-jdbc` only when JDBC is the selected store |
 | Flow/Step visibility for the control pipeline | Core plus `flower-action-runtime-workflow` |
@@ -84,7 +89,7 @@ Maven Central is the default repository, so a released consumer needs no custom
 
 ```xml
 <properties>
-    <flower-action-runtime.version>0.3.1</flower-action-runtime.version>
+    <flower-action-runtime.version>0.3.2</flower-action-runtime.version>
 </properties>
 
 <dependencies>
@@ -107,7 +112,7 @@ repositories {
     mavenCentral()
 }
 
-val flowerActionRuntimeVersion = "0.3.1"
+val flowerActionRuntimeVersion = "0.3.2"
 
 dependencies {
     implementation(
@@ -115,6 +120,7 @@ dependencies {
     )
 
     // Add only when a requirement selects the module:
+    // implementation("io.github.flowerjvm:flower-action-runtime-observability:$flowerActionRuntimeVersion")
     // implementation("io.github.flowerjvm:flower-action-runtime-workflow:$flowerActionRuntimeVersion")
     // implementation("io.github.flowerjvm:flower-action-runtime-persistence-jdbc:$flowerActionRuntimeVersion")
     // implementation("io.github.flowerjvm:flower-action-runtime-eventloop:$flowerActionRuntimeVersion")
@@ -169,7 +175,7 @@ On POSIX:
 ./gradlew check
 ```
 
-Inspect the dependency tree for Action Runtime `0.3.1`, Flower `0.1.1`, and
+Inspect the dependency tree for Action Runtime `0.3.2`, Flower `0.1.2`, and
 host-managed Jackson convergence. When the host directly authors or configures
 Flower Flows, Steps, Workers, waits, or checkpoints, also follow
 `flower-app-guide`, configure Flower Check, and keep deterministic Flow tests.

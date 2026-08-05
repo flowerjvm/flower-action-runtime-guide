@@ -82,3 +82,11 @@ Provide metrics for proposals, control rejections, approval latency, dispatch
 latency, waiting runs, terminal outcomes, CAS conflicts, stale callbacks,
 executor saturation, and recovery actions. Alert on growing non-terminal age
 and repeated reconciliation failures.
+
+When the host already uses Flower's common observation pipeline, optionally
+add `flower-action-runtime-observability` and adapt Action audit events into a
+host-owned `FlowerObservationSink`. Keep the authoritative `AuditSink` record;
+the observation adapter is a payload-light operational projection and excludes
+reasons, messages, action output, arbitrary metadata, principals, tenants, and
+users by default. Do not add this module merely to obtain ordinary Action audit
+history.

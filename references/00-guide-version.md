@@ -1,19 +1,19 @@
 # Flower Action Runtime Guide Version
 
-Guide version: `0.4.1`
+Guide version: `0.5.0`
 
-Last updated: `2026-07-30`
+Last updated: `2026-08-06`
 
-Target runtime line: `flower-action-runtime 0.3.1`
+Target runtime line: `flower-action-runtime 0.3.2`
 
-Latest published runtime release: `flower-action-runtime 0.3.1`
+Latest published runtime release: `flower-action-runtime 0.3.2`
 
 Published baselines covered by migration guidance: `0.1.0` and `0.2.0`
 
-Related Flower application guide: `flower-app-guide 0.3.0`
+Related Flower application guide: `flower-app-guide 0.5.0`
 
-Verified Flower backend compatibility: `flower-core 0.1.1` and
-`flower-eventloop 0.1.1`
+Verified Flower backend compatibility: `flower-core 0.1.2` and
+`flower-eventloop 0.1.2`
 
 Scope:
 
@@ -25,6 +25,7 @@ Scope:
 - synchronous, async, and deferred dispatch
 - durable ActionRun state, JDBC CAS, completion, cancellation, and recovery
 - direct, Flower workflow, and Flower event-loop backend selection
+- optional payload-light Action lifecycle projection into Flower observations
 - host integration and deterministic verification
 
 Version policy:
@@ -34,6 +35,6 @@ Version policy:
 - Minor: add runtime/module guidance or a compatible workflow.
 - Major: change a host-facing control or safety rule incompatibly.
 
-The runtime is pre-1.0. Consumer examples must use the published `0.3.1`
-artifacts and be checked against the matching `v0.3.1` source tag. A mutable
+The runtime is pre-1.0. Consumer examples must use the published `0.3.2`
+artifacts and be checked against the matching `v0.3.2` source tag. A mutable
 runtime checkout may be on a later SNAPSHOT and is not a consumer dependency.
