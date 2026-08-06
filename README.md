@@ -14,7 +14,7 @@ The guide covers:
 - direct, Flower workflow, and Flower event-loop backend selection;
 - host integration, parity tests, and real concurrency tests.
 
-Guide `0.5.0` targets the published `flower-action-runtime 0.3.2` release
+Guide `0.5.1` targets the published `flower-action-runtime 0.3.2` release
 and keeps migration context for 0.1/0.2 applications. Load the related
 [`flower-app-guide`](https://github.com/flowerjvm/flower-agent-skills/tree/main/agent-skills/flower-app-guide)
 as well when changing Flower Flows, Steps, Guards, Workers, waits, or

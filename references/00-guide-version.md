@@ -1,6 +1,6 @@
 # Flower Action Runtime Guide Version
 
-Guide version: `0.5.0`
+Guide version: `0.5.1`
 
 Last updated: `2026-08-06`
 
@@ -10,7 +10,7 @@ Latest published runtime release: `flower-action-runtime 0.3.2`
 
 Published baselines covered by migration guidance: `0.1.0` and `0.2.0`
 
-Related Flower application guide: `flower-app-guide 0.5.0`
+Related Flower application guide: `flower-app-guide 0.6.0`
 
 Verified Flower backend compatibility: `flower-core 0.1.2` and
 `flower-eventloop 0.1.2`
