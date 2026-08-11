@@ -44,6 +44,12 @@ coverage as well.
 - Identity, tenant, run id, and idempotency semantics are explicit.
 - Duplicate reservation is scoped by tenant, action, and idempotency key, with
   any required principal/resource visibility boundary.
+- The duplicate-policy implementation matches the deployment boundary:
+  in-memory only for one JVM with acceptable restart loss, JDBC or another
+  shared owner-aware atomic policy for restart/multi-instance coordination.
+- JDBC duplicate use applies the matching `action_duplicate` schema through
+  host-owned migrations, preserves the first terminal result, and has no
+  automatic age-based takeover of uncertain `RUNNING` work.
 - Registry, validation, and policy run before duplicate lookup; a denied caller
   cannot receive an existing authorized result.
 - When policy has a denied-principal boundary, a named test first caches an
@@ -63,13 +69,17 @@ coverage as well.
 - Deferred dispatch has deterministic operation identity, idempotency,
   reconciliation, timeout, and orphan policy; exactly-once is not assumed.
 - All externally visible transitions use durable versioned CAS.
-- Real thread/connection races prove one terminal winner. For a stateful custom
-  policy that claims concurrent duplicate suppression and caches/finalizes
+- Real thread/connection races prove one terminal winner. For a stateful
+  built-in or custom policy that claims concurrent duplicate suppression and
+  caches/finalizes
   reservations, a deterministic full-pipeline reserve-versus-complete race
   goes through the runtime and executor and proves one `ACCEPT`, one executor
   invocation/domain side effect, and an unchanged original result on later
   duplicates; policy-only ABA tests are supplemental.
 - Recovery and duplicate delivery are idempotent.
+- Native PostgreSQL/MySQL duplicate-policy behavior is supported by the
+  opt-in `native-database-tests` profile when that production claim applies;
+  mock-only JDBC tests are not native concurrency evidence.
 - Result codes and retry dispositions are stable and machine-readable.
 - Unknown failures do not silently become automatic retries, and unconfirmed
   external cancellation remains visible.

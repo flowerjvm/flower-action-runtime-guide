@@ -23,9 +23,9 @@ decision map, not a required bundle.
    test setup before selecting modules.
 3. Preserve compatible host dependency management and add only modules
    justified by the requirements.
-4. Keep every Action Runtime module on `0.3.2`. When the host directly declares
+4. Keep every Action Runtime module on `0.3.3`. When the host directly declares
    the Flower framework artifacts `flower-core` or `flower-eventloop`, align
-   those framework artifacts to Flower `0.1.2`.
+   those framework artifacts to Flower `0.1.3`.
 5. Use Maven Central; do not substitute a SNAPSHOT, `mavenLocal()`, or a
    neighboring source build.
 6. If host code directly imports a module's public API, declare that module
@@ -33,33 +33,33 @@ decision map, not a required bundle.
 7. State the modules selected, the requirements that selected them, and the
    optional modules deliberately omitted.
 
-Action Runtime `0.3.2` requires Java 21 or newer. There is no Action Runtime
+Action Runtime `0.3.3` requires Java 21 or newer. There is no Action Runtime
 Spring Boot starter in this release; wire registry, policy, stores, executors,
 runtime, and any Spring beans explicitly.
 
 ## Published Modules
 
 All application-facing coordinates use group `io.github.flowerjvm` and version
-`0.3.2`.
+`0.3.3`.
 
 | Requirement | Artifact | Add when | Leave out when |
 | --- | --- | --- | --- |
 | Direct governed-action pipeline | `flower-action-runtime-core` | Any Action Runtime control boundary is required | No governed action is required |
 | Flower observation adapter | `flower-action-runtime-observability` | The host projects payload-light Action audit lifecycle facts into a shared `FlowerObservationSink` | The host needs only authoritative Action audit records or has no common Flower observation pipeline |
 | Flower Flow/Step backend | `flower-action-runtime-workflow` | The shared pipeline stages need Flower Flow/Step visibility | Direct runtime is sufficient; do not use it as a durable-wait backend |
-| JDBC `ActionRun` persistence | `flower-action-runtime-persistence-jdbc` | JDBC is the chosen durable `RunStore` | A custom shared store or a same-JVM local/test `InMemoryRunStore` is sufficient |
+| JDBC run or duplicate persistence | `flower-action-runtime-persistence-jdbc` | JDBC is the chosen durable `RunStore`, or duplicate reservations must survive restart or coordinate multiple JVMs | A custom shared store/policy or same-JVM, restart-insensitive in-memory state is sufficient |
 | Event-loop approval/resume backend | `flower-action-runtime-eventloop` | Approval waits, deadlines, and resume justify the experimental Flower EventFlow backend | Direct/workflow execution is sufficient; do not use it as a generic async executor |
 
-`observability` brings Action Runtime core and `flower-observability:0.1.2`.
+`observability` brings Action Runtime core and `flower-observability:0.1.3`.
 It mirrors safe lifecycle facts and does not replace the authoritative
 `AuditSink` business record.
-`workflow` brings Action Runtime core and `flower-core:0.1.2`.
-`eventloop` brings Action Runtime core and `flower-eventloop:0.1.2`.
+`workflow` brings Action Runtime core and `flower-core:0.1.3`.
+`eventloop` brings Action Runtime core and `flower-eventloop:0.1.3`.
 `persistence-jdbc` brings Action Runtime core but no production JDBC driver.
 Do not add both Flower backends by default; select each only for a demonstrated
 execution need.
 
-Action Runtime `0.3.2` is pre-1.0 and its APIs may change. The
+Action Runtime `0.3.3` is pre-1.0 and its APIs may change. The
 `flower-action-runtime-eventloop` backend is experimental. Pin exact versions
 and validate that backend's operational behavior before selecting it for
 production.
@@ -70,6 +70,8 @@ production.
 | --- | --- |
 | Synchronous governed action | `flower-action-runtime-core` |
 | Correlated Flower observation stream | Core plus `flower-action-runtime-observability` and a host-owned `FlowerObservationSink` |
+| Concurrent duplicate suppression inside one JVM | Core plus `InMemoryDuplicateActionPolicy`; add a trusted visibility resolver when results are not tenant-wide |
+| Restart-visible or multi-JVM duplicate reservation | Core plus `flower-action-runtime-persistence-jdbc`, `JdbcDuplicateActionPolicy`, a host `DataSource`, and the matching `action_duplicate` schema |
 | Short-lived same-JVM async, approval, or cancellation | Core plus a queryable `InMemoryRunStore` may be sufficient for local/test use |
 | Restart-sensitive, multi-instance, or production deferred action | Core plus a queryable shared durable `RunStore`; add `persistence-jdbc` only when JDBC is the selected store |
 | Flow/Step visibility for the control pipeline | Core plus `flower-action-runtime-workflow` |
@@ -89,7 +91,7 @@ Maven Central is the default repository, so a released consumer needs no custom
 
 ```xml
 <properties>
-    <flower-action-runtime.version>0.3.2</flower-action-runtime.version>
+    <flower-action-runtime.version>0.3.3</flower-action-runtime.version>
 </properties>
 
 <dependencies>
@@ -112,7 +114,7 @@ repositories {
     mavenCentral()
 }
 
-val flowerActionRuntimeVersion = "0.3.2"
+val flowerActionRuntimeVersion = "0.3.3"
 
 dependencies {
     implementation(
@@ -133,7 +135,8 @@ and scopes in Groovy syntax.
 ## JDBC Persistence
 
 `flower-action-runtime-persistence-jdbc` accepts a host-provided `DataSource`
-and provides `JdbcRunStore`. It does not provide a production database driver,
+and provides independent `JdbcRunStore` and `JdbcDuplicateActionPolicy`
+components. It does not provide a production database driver,
 connection pool, `DataSource`, migration runner, Spring auto-configuration, or
 automatic schema creation.
 
@@ -143,19 +146,28 @@ Fresh schema resources are:
 db/action_run/h2.sql
 db/action_run/mysql.sql
 db/action_run/postgresql.sql
+
+db/action_duplicate/h2.sql
+db/action_duplicate/mysql.sql
+db/action_duplicate/postgresql.sql
 ```
 
-Versioned migration resources are under `db/action_run/migration/`. Apply the
-matching scripts through the host's migration boundary; never edit an already
-applied migration. Treat H2 as a valid test/local dialect, not proof of native
-MySQL or PostgreSQL production validation.
+Versioned run migrations are under `db/action_run/migration/`. Additive
+duplicate-table migrations are under `db/action_duplicate/migration/`. Apply
+only the matching resources through the host's migration boundary; never edit
+an already applied migration. Treat H2 as fast test/local evidence. Use the
+runtime's opt-in `native-database-tests` profile when claiming the shipped
+PostgreSQL or MySQL duplicate-policy concurrency behavior.
 
 The shipped schema/dialect coverage is H2, MySQL, and PostgreSQL only. Another
 database requires a separately validated custom schema and store; do not infer
 support merely because it has a JDBC driver.
 
-JDBC CAS prevents stale state overwrite. It does not provide queue ownership,
-leasing, an outbox, or exactly-once external effects.
+JDBC CAS prevents stale state overwrite. The JDBC duplicate policy supplies a
+separate owner-aware reservation/result index; it does not merge that index,
+`ActionRun`, or an external domain effect into one transaction. Neither
+component provides queue ownership, leasing, an outbox, or exactly-once
+external effects.
 
 ## Verification
 
@@ -175,7 +187,7 @@ On POSIX:
 ./gradlew check
 ```
 
-Inspect the dependency tree for Action Runtime `0.3.2`, Flower `0.1.2`, and
+Inspect the dependency tree for Action Runtime `0.3.3`, Flower `0.1.3`, and
 host-managed Jackson convergence. When the host directly authors or configures
 Flower Flows, Steps, Workers, waits, or checkpoints, also follow
 `flower-app-guide`, configure Flower Check, and keep deterministic Flow tests.

@@ -61,15 +61,20 @@ uniqueness/CAS for production policies. A reserve concurrent with completion
 must return either an in-progress decision or the stored result, never a new
 acceptance.
 
-The `0.3.2` `InMemoryDuplicateActionPolicy` has exactly that separate-map
-limitation and also removes running state without checking which request owns
-the reservation. It is suitable only for serialized test/demo/local use where
-those races are explicitly accepted, not for concurrent duplicate control.
-When concurrency is possible, use a custom policy whose per-scope state stores
-the reservation owner from trusted context, normally the unique `runId`.
-`complete()` and `release()` may change that scope only while the caller still
-owns it. Delayed or repeated completion/release from an older owner must never
-remove a newer reservation or replace its result.
+In `0.3.3`, `InMemoryDuplicateActionPolicy` implements that owner-aware atomic
+state machine for concurrent callers inside one JVM. It stores the reservation
+owner from trusted `runId`; a repeated reserve does not return another
+`ACCEPT`, and stale completion/release cannot replace the first terminal result
+or remove a newer owner. It remains non-durable and unbounded, so use
+`JdbcDuplicateActionPolicy` or another shared durable policy for restart or
+multi-process coordination.
+
+Both shipped policies always include `tenantId + actionId + idempotencyKey`.
+Their default visibility scope is tenant-wide. When a cached result is
+principal-restricted or resource-bound, configure a stable
+`DuplicateVisibilityScopeResolver` from trusted host identity or canonical
+resource context. Do not use an arbitrary action payload, AI output, or
+unverified callback field as the visibility authority.
 
 Approval resume does not reserve again; it keeps the original reservation and
 uses this order:

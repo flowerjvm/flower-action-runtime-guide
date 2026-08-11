@@ -1,6 +1,6 @@
 ---
 name: flower-action-runtime-guide
-description: Use when creating, building, modifying, reviewing, migrating, or testing Java code that uses flower-action-runtime, including new Maven or Gradle project setup, Maven Central dependency and backend-module selection, ActionProposal and ActionDefinition design, registry/validation/policy/approval/pre-execution controls, tenant-scoped duplicate handling, explicit failure retry policy, synchronous/async/deferred executor selection, ActionRun and RunStore persistence, JDBC CAS concurrency, completion/cancellation/recovery, Flower workflow or event-loop backends, and 0.1/0.2-to-0.3 migration.
+description: Use when creating, building, modifying, reviewing, migrating, or testing Java code that uses flower-action-runtime, including new Maven or Gradle project setup, Maven Central dependency and backend-module selection, ActionProposal and ActionDefinition design, registry/validation/policy/approval/pre-execution controls, visibility-safe owner-aware in-memory or JDBC duplicate handling, explicit failure retry policy, synchronous/async/deferred executor selection, ActionRun and RunStore persistence, JDBC CAS concurrency, completion/cancellation/recovery, Flower workflow or event-loop backends, and 0.1/0.2-to-0.3 migration.
 ---
 
 # Flower Action Runtime Guide
@@ -53,8 +53,8 @@ Then read the reference that matches the task.
 2. Before changing a host build, read
    `references/05-build-and-module-selection.md`, preserve compatible host
    dependency management, and select only requirement-backed modules. Pin the
-   published Maven Central `0.3.2` artifacts and verify APIs against the
-   `v0.3.2` source tag. Inspect a mutable checkout only when modifying the
+   published Maven Central `0.3.3` artifacts and verify APIs against the
+   `v0.3.3` source tag. Inspect a mutable checkout only when modifying the
    runtime itself; its main branch may be a later SNAPSHOT.
 3. Define a stable action id and register exactly one controlled executor.
 4. Map request channel, proposer type, execution principal, tenant, run id, and
@@ -95,7 +95,7 @@ applicable scenario as a distinct named test:
 Record a short N/A reason for a genuinely absent visibility dimension or an
 intentionally shareable result.
 
-When a stateful custom duplicate policy claims concurrent duplicate suppression
+When a stateful duplicate policy claims concurrent duplicate suppression
 and caches or finalizes reservations, also run a deterministic full-pipeline
 race. Both contenders must call the Action Runtime; any accepted request must
 pass through the registered executor. Place barriers or latches immediately
@@ -154,23 +154,30 @@ callback path that recreates the bypass.
 - Scope duplicate reservations by at least tenant, action id, and idempotency
   key. Add principal or resource scope when an existing result is not safely
   shareable within the tenant.
-- In `0.3.2`, `InMemoryDuplicateActionPolicy` scopes by tenant, action id, and
-  idempotency key. Do not use it alone when a cached result contains
+- In `0.3.3`, `InMemoryDuplicateActionPolicy` scopes by tenant, action id,
+  idempotency key, and an optional trusted visibility scope. Do not use the
+  tenant-wide default when a cached result contains
   principal- or resource-restricted data. Authorizing the current request
   before lookup is insufficient when that authorization may concern a
   different resource from the cached result. Bind reservation/result lookup to
-  trusted principal or resource identity, or reject the duplicate without
-  returning the cached result. When an applicable principal or resource
-  visibility boundary exists, run the corresponding denied-principal or
-  authorized cross-resource test from the completion gate. Otherwise record
-  that dimension as N/A without inventing one.
-- The `0.3.2` `InMemoryDuplicateActionPolicy` is not a concurrent duplicate
-  control: it stores completed and running state separately, so
-  reserve-versus-complete can accept the same logical operation again, and
-  owner-blind `release()` can remove a newer reservation. Its test/demo/local
-  designation does not remove those same-JVM races. Use it only when calls are
-  serialized and that limitation is acceptable; otherwise replace it with a
-  custom owner-aware atomic policy or a durable policy.
+  a stable trusted principal or canonical resource identity through
+  `DuplicateVisibilityScopeResolver`, or reject the duplicate without returning
+  the cached result. Never derive that scope from arbitrary request payload,
+  AI output, or an unverified callback. Run the corresponding
+  denied-principal or authorized cross-resource test when that visibility
+  boundary exists; otherwise record the dimension as N/A without inventing it.
+- The `0.3.3` `InMemoryDuplicateActionPolicy` uses one owner-aware atomic state
+  per scope and can suppress concurrent duplicates inside one JVM. It remains
+  non-durable and unbounded: reservations/results disappear on restart, do not
+  coordinate multiple processes, and are never evicted. Use
+  `JdbcDuplicateActionPolicy` or another shared durable policy when restart or
+  multi-instance coordination matters.
+- Keep duplicate reservation state separate from `ActionRun` lifecycle state.
+  For the shipped JDBC policy, apply the matching host-owned
+  `db/action_duplicate/<dialect>.sql` or additive migration. Do not add an
+  automatic TTL/lease takeover: an old `RUNNING` reservation does not prove
+  that an external side effect stopped. Reconcile `ActionRun` and domain state
+  before any explicit repair.
 - Treat duplicate reservation, completion, and release as one atomic
   owner-aware per-scope state machine. Retain the current reservation owner
   from trusted execution identity, normally the unique `runId`; apply
@@ -196,8 +203,8 @@ callback path that recreates the bypass.
 
 ## Source Of Truth
 
-For a consuming application, the published `0.3.2` artifacts and the matching
-`v0.3.2` source tag are authoritative. Never make a distributable guide,
+For a consuming application, the published `0.3.3` artifacts and the matching
+`v0.3.3` source tag are authoritative. Never make a distributable guide,
 sample, or plugin depend on a mutable checkout, `mavenLocal()`, or a SNAPSHOT.
 When modifying the runtime itself, its checked-out source and tests become the
 working source of truth. Useful upstream documents include:
@@ -207,6 +214,7 @@ flower-action-runtime/README.md
 flower-action-runtime/flower-action-runtime-core/README.md
 flower-action-runtime/docs/architecture/DEFERRED_ACTION_EXECUTION.md
 flower-action-runtime/docs/architecture/ACTION_RUN_PERSISTENCE.md
+flower-action-runtime/docs/architecture/DURABLE_DUPLICATE_HANDLING.md
 flower-action-runtime/docs/architecture/EXECUTION_BACKEND_STRATEGY.md
 flower-action-runtime/docs/architecture/V0_2_MIGRATION_AND_MODULE_IMPACT.md
 flower-action-runtime/docs/architecture/V0_3_MIGRATION_AND_MODULE_IMPACT.md

@@ -1,5 +1,12 @@
 # Testing
 
+## Contents
+
+- [Pipeline Tests](#pipeline-tests)
+- [Backend Parity](#backend-parity)
+- [Real Concurrency Tests](#real-concurrency-tests)
+- [Persistence And Recovery Tests](#persistence-and-recovery-tests)
+
 ## Pipeline Tests
 
 Cover at least:
@@ -56,9 +63,9 @@ can have multiple instances, two runtime objects sharing the same database.
 Repeat the focused concurrency class enough times to catch accidental timing
 dependencies, but coordinate starts with barriers rather than sleeps.
 
-For a stateful custom `DuplicateActionPolicy` that claims concurrent duplicate
-suppression and caches or finalizes reservations, also exercise
-reserve-versus-complete on the same scope. Run both contenders through the
+For a stateful built-in or custom `DuplicateActionPolicy` that claims
+concurrent duplicate suppression and caches or finalizes reservations, also
+exercise reserve-versus-complete on the same scope. Run both contenders through the
 Action Runtime and registered executor. Use a test decorator or hook to place
 barriers immediately before the atomic reserve/complete transitions; never wait
 while holding the per-scope lock. Assert exactly one
@@ -87,6 +94,14 @@ why a principal/resource/race case is N/A when that boundary or stateful
 concurrency claim is genuinely absent; do not invent one. Before reporting
 completion, point each applicable duplicate-safety claim to its specific test
 and assertion.
+
+For `JdbcDuplicateActionPolicy`, use separate connections and policy/runtime
+instances against the same database. Cover concurrent unique reservation,
+restart-visible completed results, stable first terminal result, stale-owner
+completion/release ABA sequences, denied-principal replay, and cross-resource
+visibility separation. H2 is fast feedback; when claiming the shipped native
+database contract, run the opt-in `native-database-tests` profile against real
+PostgreSQL and MySQL rather than replacing it with `JdbcTemplate` mocks.
 
 ## Persistence And Recovery Tests
 

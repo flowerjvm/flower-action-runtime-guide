@@ -1,5 +1,15 @@
 # Persistence And Concurrency
 
+## Contents
+
+- [ActionRun Is Lifecycle Truth](#actionrun-is-lifecycle-truth)
+- [RunStore Contract](#runstore-contract)
+- [Duplicate Scope](#duplicate-scope)
+- [Duplicate Policy Selection](#duplicate-policy-selection)
+- [JDBC CAS](#jdbc-cas)
+- [What CAS Does Not Solve](#what-cas-does-not-solve)
+- [Recovery](#recovery)
+
 ## ActionRun Is Lifecycle Truth
 
 `ActionRun` records the governed lifecycle, including the proposal identity,
@@ -50,6 +60,38 @@ terminal bookkeeping retains the same tenant scope as reservation. Add principal
 or resource-visibility scope when returning an existing result could expose
 data across actors. A global unique constraint on `idempotencyKey` alone is not
 tenant safe.
+
+## Duplicate Policy Selection
+
+Use `InMemoryDuplicateActionPolicy` for concurrent duplicate suppression only
+when one JVM owns the runtime and losing all reservations/results on restart is
+acceptable. Its per-scope state is owner-aware and atomic in `0.3.3`, but the
+map is unbounded and does not coordinate another process.
+
+Use `JdbcDuplicateActionPolicy` when duplicate reservations must survive
+restart or coordinate multiple runtime instances. It stores a separate
+`action_duplicate` reservation/result index. Apply the matching fresh schema or
+additive migration from `db/action_duplicate/` through the host's migration
+system; no schema is applied automatically.
+
+Keep these truths distinct:
+
+```text
+ActionRun         one governed request lifecycle and attempt
+action_duplicate  owner and first result for one logical operation scope
+domain store      whether the business side effect actually committed
+```
+
+The duplicate owner is the trusted unique `runId`. Only that owner may complete
+or release `RUNNING`; stale or repeated calls must not alter a newer owner or a
+completed result. Preserve the first terminal result, including failures. A
+`RetryDisposition` may permit a later explicitly governed attempt, but it does
+not erase or automatically retry the same logical reservation.
+
+Do not implement automatic TTL or lease takeover of an old `RUNNING` duplicate
+row. Age alone cannot prove that the earlier external effect stopped. Reconcile
+the matching `ActionRun`, domain state, and external operation before an
+explicit audited repair or release.
 
 ## JDBC CAS
 

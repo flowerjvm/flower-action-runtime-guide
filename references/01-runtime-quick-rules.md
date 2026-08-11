@@ -80,6 +80,14 @@ deferred completion, cancellation, and recovery need a queryable store.
 - Resolve, validate, and authorize before duplicate lookup. Still scope
   duplicates by at least `tenantId + actionId + idempotencyKey` and add
   principal/resource visibility when existing results are not shareable.
+- Use `InMemoryDuplicateActionPolicy` only for one-JVM, restart-insensitive
+  work. Configure a trusted `DuplicateVisibilityScopeResolver` when completed
+  results are not tenant-wide. Use `JdbcDuplicateActionPolicy` or another
+  shared owner-aware atomic policy for restart or multi-instance coordination.
+- Keep `ActionRun`, duplicate reservation, and domain-effect truth distinct.
+  Never steal an old `RUNNING` reservation by age alone; reconcile uncertain
+  work. Preserve the first terminal duplicate result even when its retry
+  disposition says a later explicit attempt may be meaningful.
 - Classify failures explicitly. Unknown failures default to `MANUAL_REVIEW`;
   only known transient failures should use `AFTER_BACKOFF`.
 - A terminal `CANCELLED` Run rejects later normal completion but does not prove
