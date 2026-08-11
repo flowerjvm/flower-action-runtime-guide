@@ -80,6 +80,10 @@ coverage as well.
 - Native PostgreSQL/MySQL duplicate-policy behavior is supported by the
   opt-in `native-database-tests` profile when that production claim applies;
   mock-only JDBC tests are not native concurrency evidence.
+- A host that combines Action Runtime `0.3.3` with Agent `0.2.0` or AI Harness
+  `0.1.3` resolves Flower `0.1.3`, records the dependency tree, and tests the
+  selected integration path without relabeling host evidence as upstream
+  release verification.
 - Result codes and retry dispositions are stable and machine-readable.
 - Unknown failures do not silently become automatic retries, and unconfirmed
   external cancellation remains visible.

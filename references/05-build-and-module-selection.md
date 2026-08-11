@@ -33,6 +33,14 @@ decision map, not a required bundle.
 7. State the modules selected, the requirements that selected them, and the
    optional modules deliberately omitted.
 
+Flower Agent `0.2.0` and Flower AI Harness `0.1.3` were published against
+Flower `0.1.2`, while Action Runtime `0.3.3` declares Flower `0.1.3`. When
+these families share one host dependency graph, align the direct Flower
+modules to `0.1.3`, inspect the resolved tree, and run the selected Agent or
+Harness integration path. Describe a passing result as host-verified, not as
+new upstream compatibility. If it fails, do not claim the combination is
+supported or downgrade Action Runtime's Flower backends to `0.1.2`.
+
 Action Runtime `0.3.3` requires Java 21 or newer. There is no Action Runtime
 Spring Boot starter in this release; wire registry, policy, stores, executors,
 runtime, and any Spring beans explicitly.
